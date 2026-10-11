@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unique AV RF Scan</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --line:#2a333d; --text:#e6edf3; --muted:#8b98a5;
+  --accent:#3fb5ff; --live:#ffd84d; --max:#ff5c5c; --avg:#5cff9d; --gap:rgba(60,220,120,.13); --gapEdge:rgba(60,220,120,.7);
+  --thr:#ff9f40; --btn:#24303c; --btnh:#2f3d4b; --danger:#d9453b; --ok:#2ea043;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button,select,input{font:inherit;color:var(--text)}
+button{background:var(--btn);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+button:hover{background:var(--btnh)}
+button.primary{background:var(--accent);color:#04121c;border-color:var(--accent);font-weight:600}
+button.go{background:var(--ok);border-color:var(--ok);font-weight:600}
+button.stop{background:var(--danger);border-color:var(--danger);font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+select,input[type=number],input[type=text]{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:4px 6px;width:100%}
+label{display:block;color:var(--muted);font-size:11px;margin:6px 0 2px}
+label.chk{display:flex;align-items:center;gap:6px;color:var(--text);font-size:12px}
+.app{display:grid;grid-template-rows:auto 1fr;height:100vh}
+header{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;margin:0 8px 0 0;letter-spacing:.3px}
+header h1 span{color:var(--accent)}
+.status{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:#555}
+.dot.on{background:var(--ok)} .dot.busy{background:var(--live)} .dot.demo{background:var(--accent)}
+.spacer{flex:1}
+#readout{font-variant-numeric:tabular-nums;color:var(--muted);min-width:330px;text-align:right}
+.main{display:grid;grid-template-columns:270px 1fr;min-height:0}
+aside{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:8px 12px 20px}
+aside h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin:14px 0 4px;border-top:1px solid var(--line);padding-top:10px}
+aside h3:first-child{border-top:0;margin-top:2px;padding-top:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.btns button{flex:1}
+.note{color:var(--muted);font-size:11px;margin-top:6px}
+.work{display:grid;grid-template-rows:minmax(220px,1fr) 150px 210px;min-height:0;min-width:0}
+.plot{position:relative;min-height:0;border-bottom:1px solid var(--line)}
+canvas{display:block;width:100%;height:100%}
+#wf{image-rendering:pixelated;background:#000}
+.legend{position:absolute;top:4px;right:16px;display:flex;gap:12px;font-size:11px;background:rgba(13,17,23,.75);padding:3px 8px;border-radius:5px}
+.legend span{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px}
+.legend span.off{opacity:.35}
+.progress{position:absolute;left:50px;right:12px;bottom:0;height:2px;background:transparent}
+.progress div{height:100%;width:0;background:var(--accent);transition:width .15s}
+.bottom{display:grid;grid-template-rows:auto 1fr;min-height:0;background:var(--panel)}
+.tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);align-items:flex-end}
+.tab{padding:6px 12px;border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;cursor:pointer;color:var(--muted)}
+.tab.on{background:var(--bg);border-color:var(--line);color:var(--text)}
+.tabs .spacer{flex:1}
+.tabs .sum{color:var(--muted);font-size:12px;padding-bottom:6px}
+.pane{overflow:auto;display:none;background:var(--bg)}
+.pane.on{display:block}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:4px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel2);color:var(--muted);font-weight:500;font-size:11px}
+th:first-child,td:first-child{text-align:left}
+tbody tr{cursor:pointer} tbody tr:hover{background:#1b2531}
+#log{font:11px/1.4 ui-monospace,Menlo,Consolas,monospace;padding:6px 10px;white-space:pre-wrap;color:#b7c4d1}
+.help{padding:10px 14px;color:#c9d4de;max-width:900px}
+.help h4{margin:12px 0 4px;color:var(--accent)}
+.help code{background:var(--panel2);padding:1px 4px;border-radius:3px}
+#upd{display:none;align-items:center;gap:10px;background:#12324a;border:1px solid var(--accent);border-radius:6px;padding:4px 10px;font-size:12px}
+#upd.show{display:flex}
+#ver{color:var(--muted);font-size:11px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#24303c;border:1px solid var(--line);padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9}
+#toast.show{opacity:1}
+@media (max-width:820px){.main{grid-template-columns:1fr}.app{height:auto}aside{border-right:0}.work{grid-template-rows:320px 140px 260px}#readout{min-width:0}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>Unique AV <span>RF Scan</span> <span id="ver"></span></h1>
+  <button id="btnConnect" class="primary">Connect tinySA</button>
+  <button id="btnDemo" title="Simulated RF so you can try the app without the tinySA">Demo mode</button>
+  <div class="status"><div id="dot" class="dot"></div><span id="statusText">Not connected</span></div>
+  <button id="btnScan" class="go" disabled>▶ Start scan</button>
+  <div class="spacer"></div>
+  <div id="upd"><span id="updText"></span><button id="updBtn" class="primary" style="padding:3px 10px">Restart &amp; update</button></div>
+  <div id="readout">Hover the graph · drag to zoom · double-click to reset</div>
+</header>
+<div class="main">
+<aside>
+  <h3>Scan range</h3>
+  <label>Preset</label>
+  <select id="preset"></select>
+  <div class="row">
+    <div><label>Start (MHz)</label><input id="fStart" type="number" step="0.001" value="470"></div>
+    <div><label>Stop (MHz)</label><input id="fStop" type="number" step="0.001" value="694"></div>
+  </div>
+  <div class="row">
+    <div><label>Step (kHz)</label>
+      <select id="fStep"><option>10</option><option>12.5</option><option selected>25</option><option>50</option><option>100</option><option>125</option><option>250</option></select></div>
+    <div><label>Points / chunk</label><input id="chunkPts" type="number" min="50" max="30000" value="450"></div>
+  </div>
+  <div class="note" id="gridInfo"></div>
+
+  <h3>tinySA settings</h3>
+  <div class="row">
+    <div><label>RBW</label>
+      <select id="rbw"><option value="auto">Auto</option><option value="3">3 kHz</option><option value="10">10 kHz</option><option value="30" selected>30 kHz</option><option value="100">100 kHz</option><option value="300">300 kHz</option></select></div>
+    <div><label>Attenuation</label>
+      <select id="att"><option value="auto">Auto</option><option value="0" selected>0 dB</option><option value="10">10 dB</option><option value="20">20 dB</option><option value="30">30 dB</option></select></div>
+  </div>
+  <label class="chk" style="margin-top:8px"><input id="lna" type="checkbox"> LNA on (Ultra – more sensitive)</label>
+  <label class="chk"><input id="allPorts" type="checkbox"> Show all serial ports when connecting</label>
+  <div class="row">
+    <div><label>Stop after sweeps (0 = run)</label><input id="sweepLimit" type="number" min="0" value="0"></div>
+    <div><label>Sweeps done</label><input id="sweepCount" type="text" value="0" readonly></div>
+  </div>
+
+  <h3>Display</h3>
+  <div class="row">
+    <div><label>Top (dBm)</label><input id="dbTop" type="number" value="-20"></div>
+    <div><label>Bottom (dBm)</label><input id="dbBot" type="number" value="-120"></div>
+  </div>
+  <label>TV channel overlay</label>
+  <select id="tvRegion"><option value="eu" selected>South Africa / Europe (8 MHz, ch21 = 470)</option><option value="us">USA (6 MHz, ch14 = 470)</option><option value="none">Off</option></select>
+  <div class="btns"><button id="btnClearMax">Clear max hold</button><button id="btnClearAll">Clear all</button></div>
+
+  <h3>Analysis</h3>
+  <label>Analyse trace</label>
+  <select id="anTrace"><option value="max" selected>Max hold</option><option value="avg">Average</option><option value="live">Live</option></select>
+  <div class="row">
+    <div><label>Threshold (dBm)</label><input id="thr" type="number" value="-90"></div>
+    <div><label>Min open width (kHz)</label><input id="minGap" type="number" value="400"></div>
+  </div>
+  <div class="row">
+    <div><label>Guard band (kHz)</label><input id="guard" type="number" value="100"></div>
+    <div><label>Peak spacing (kHz)</label><input id="peakSep" type="number" value="200"></div>
+  </div>
+
+  <h3>Export</h3>
+  <label>Trace to export</label>
+  <select id="exTrace"><option value="max" selected>Max hold (recommended)</option><option value="avg">Average</option><option value="live">Last sweep</option></select>
+  <label>Venue / file name</label>
+  <input id="venue" type="text" placeholder="e.g. Sun City Superbowl">
+  <div class="btns">
+    <button data-ex="wwb">Shure WWB</button>
+    <button data-ex="wsm">Sennheiser WSM</button>
+  </div>
+  <div class="btns">
+    <button data-ex="generic">Generic CSV</button>
+    <button data-ex="custom">Custom</button>
+  </div>
+  <div class="row3">
+    <div><label>Freq unit</label><select id="cuUnit"><option>MHz</option><option>kHz</option><option>Hz</option></select></div>
+    <div><label>Separator</label><select id="cuSep"><option value=",">Comma</option><option value=";">Semicolon</option><option value="\t">Tab</option></select></div>
+    <div><label>Header</label><select id="cuHead"><option value="0">No</option><option value="1">Yes</option></select></div>
+  </div>
+  <div class="note">Custom uses these three options. Generic suits IAS, Wavetool, Soundbase, RF Venue and most others.</div>
+  <div class="btns">
+    <button id="btnExGaps">Open freqs list</button>
+    <button id="btnExPeaks">Carriers list</button>
+  </div>
+  <div class="btns">
+    <button id="btnSave">Save session</button>
+    <button id="btnLoad">Open session</button>
+    <input id="fileLoad" type="file" accept=".json,.rfscan" hidden>
+  </div>
+</aside>
+
+<section class="work">
+  <div class="plot">
+    <canvas id="spec"></canvas>
+    <div class="legend">
+      <span data-tr="live"><i style="background:var(--live)"></i>Live</span>
+      <span data-tr="max"><i style="background:var(--max)"></i>Max hold</span>
+      <span data-tr="avg"><i style="background:var(--avg)"></i>Average</span>
+      <span data-tr="gaps"><i style="background:var(--gapEdge)"></i>Open</span>
+      <span data-tr="peaks"><i style="background:#fff"></i>Peaks</span>
+    </div>
+    <div class="progress"><div id="prog"></div></div>
+  </div>
+  <div class="plot"><canvas id="wf"></canvas></div>
+  <div class="bottom">
+    <div class="tabs">
+      <div class="tab on" data-pane="pGaps">Open frequencies</div>
+      <div class="tab" data-pane="pPeaks">Carriers / peaks</div>
+      <div class="tab" data-pane="pLog">Log</div>
+      <div class="tab" data-pane="pHelp">Help</div>
+      <div class="spacer"></div>
+      <div class="sum" id="sum"></div>
+    </div>
+    <div class="pane on" id="pGaps"><table><thead><tr><th>#</th><th>Start MHz</th><th>End MHz</th><th>Width kHz</th><th>Centre MHz</th><th>Max in gap dBm</th><th>TV ch</th></tr></thead><tbody id="gapBody"></tbody></table></div>
+    <div class="pane" id="pPeaks"><table><thead><tr><th>#</th><th>Frequency MHz</th><th>Level dBm</th><th>Above threshold dB</th><th>TV ch</th></tr></thead><tbody id="peakBody"></tbody></table></div>
+    <div class="pane" id="pLog"><div id="log"></div></div>
+    <div class="pane" id="pHelp"><div class="help">
+      <h4>Getting started</h4>
+      <span class="webonly">Open this file in <b>Google Chrome</b> or <b>Microsoft Edge</b> (Safari and Firefox can't use USB serial). </span>Plug the tinySA Ultra in by USB, switch it on, click <b>Connect tinySA</b> and pick the port (it usually shows as "tinySA" or "STM32 Virtual ComPort"). If no port appears, tick <i>Show all serial ports</i> and try again. Choose a preset or type a range, then <b>Start scan</b>. Let it run several sweeps (walk the stage, wait for the room to fill) so <span style="color:var(--max)">Max hold</span> catches intermittent signals.
+      <h4>Good settings for wireless mics</h4>
+      Step 25 kHz with RBW 30 kHz is a good balance. Finer step / smaller RBW shows more detail but sweeps slower. Leave attenuation at 0 dB unless you're right next to strong transmitters. LNA on gives a lower noise floor on the Ultra. The tinySA sweeps about 450 points at a time, so wide scans are done in chunks — the blue bar under the graph shows progress. Above about 800 MHz the Ultra needs its Ultra mode enabled on the device.
+      <h4>Using the scan in your coordination software</h4>
+      <b>Shure Wireless Workbench</b> — click <i>Shure WWB</i>, then in WWB's Frequency Coordination area import the file as scan data. <br>
+      <b>Sennheiser WSM</b> — click <i>Sennheiser WSM</i>; the file uses WSM's scan layout (kHz, semicolons, range header). Import it in Professional Setup as scan data.<br>
+      <b>Other apps</b> (IAS, Wavetool, Soundbase Coord, RF Venue etc.) — use <i>Generic CSV</i>. If an app refuses a file, try <i>Custom</i> with a different unit / separator / header.<br>
+      <b>Open freqs list</b> exports the centre of every open gap (one MHz value per line) for importing as a frequency or inclusion list. <b>Carriers list</b> exports detected signals for exclusion lists.
+      <h4>Mouse</h4>
+      Drag across the graph to zoom, scroll wheel to zoom around the cursor, double-click to reset. Click a row in the tables to jump to it. Click legend items to hide/show traces. Space bar starts/stops a scan.
+    </div></div>
+  </div>
+</section>
+</div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- presets ---------- */
+const PRESETS = [
+  ['Custom', null, null],
+  ['UHF TV band (SA) 470–694', 470, 694],
+  ['UHF 470–790', 470, 790],
+  ['Wide 400–960', 400, 960],
+  ['Shure G50 470–534', 470, 534],
+  ['Shure H50 534–598', 534, 598],
+  ['Shure J50A 572–636', 572, 636],
+  ['Shure K51 606–670', 606, 670],
+  ['Shure L50 632–696', 632, 696],
+  ['Sennheiser Aw+ 470–558', 470, 558],
+  ['Sennheiser A 516–558', 516, 558],
+  ['Sennheiser Gw 558–626', 558, 626],
+  ['Sennheiser G 566–608', 566, 608],
+  ['Sennheiser GB 606–648', 606, 648],
+  ['Sennheiser Bw 626–698', 626, 698],
+  ['Sennheiser 1G8 1785–1805', 1785, 1805],
+];
+$('#preset').innerHTML = PRESETS.map((p, i) => `<option value="${i}">${p[0]}</option>`).join('');
+$('#preset').value = 1;
+
+/* ---------- state ---------- */
+const S = {
+  start: 470e6, stop: 694e6, step: 25e3, n: 0,
+  live: null, max: null, avg: null, sweeps: 0, history: [],
+  running: false, demo: false, viewA: 0, viewB: 0,
+  show: { live: true, max: true, avg: true, gaps: true, peaks: true },
+  gaps: [], peaks: [], demoScene: null, scanStartedAt: null
+};
+const MAX_HISTORY = 200;
+const fq = i => S.start + i * S.step;
+
+function allocGrid() {
+  S.n = Math.floor((S.stop - S.start) / S.step + 1e-6) + 1;
+  S.live = new Float32Array(S.n).fill(NaN);
+  S.max = new Float32Array(S.n).fill(NaN);
+  S.avg = new Float32Array(S.n).fill(NaN);
+  S.sweeps = 0; S.history = []; S.viewA = 0; S.viewB = S.n - 1;
+  S.gaps = []; S.peaks = []; S.demoScene = null;
+  $('#sweepCount').value = 0;
+  renderTables(); dirty(true);
+}
+function readGridInputs() {
+  let a = parseFloat($('#fStart').value) * 1e6, b = parseFloat($('#fStop').value) * 1e6;
+  const st = parseFloat($('#fStep').value) * 1e3;
+  if (!isFinite(a) || !isFinite(b) || b <= a) { toast('Stop must be above start'); return null; }
+  a = Math.max(a, 100e3); b = Math.min(b, 6e9);
+  return { start: a, stop: b, step: st };
+}
+function updateGridInfo() {
+  const g = readGridInputs(); if (!g) return;
+  const n = Math.floor((g.stop - g.start) / g.step + 1e-6) + 1;
+  const cp = Math.max(50, parseInt($('#chunkPts').value) || 450);
+  $('#gridInfo').textContent = `${n.toLocaleString()} points · ${Math.ceil(n / cp)} chunk(s) per sweep`;
+}
+
+/* ---------- logging / ui helpers ---------- */
+function log(msg) {
+  const el = $('#log'); const t = new Date().toLocaleTimeString();
+  el.textContent += `[${t}] ${msg}\n`;
+  if (el.textContent.length > 60000) el.textContent = el.textContent.slice(-40000);
+  el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+let toastT;
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+function setStatus(text, cls) { $('#statusText').textContent = text; $('#dot').className = 'dot ' + (cls || ''); }
+function updateButtons() {
+  const ready = !!Dev.port || S.demo;
+  const b = $('#btnScan');
+  b.disabled = !ready;
+  b.textContent = S.running ? '■ Stop scan' : '▶ Start scan';
+  b.className = S.running ? 'stop' : 'go';
+  $('#btnConnect').textContent = Dev.port ? 'Disconnect' : 'Connect tinySA';
+  $('#btnDemo').textContent = S.demo ? 'Exit demo' : 'Demo mode';
+  $('#btnConnect').disabled = S.running;
+  $('#btnDemo').disabled = S.running || !!Dev.port;
+}
+
+/* ---------- serial (Web Serial) ---------- */
+const Dev = { port: null, reader: null, writer: null, readDone: null, writeDone: null, buf: '', waiter: null, queue: Promise.resolve() };
+
+async function devConnect() {
+  if (!('serial' in navigator)) { alert('This browser cannot talk to USB serial devices.\nPlease open this file in Google Chrome or Microsoft Edge.'); return; }
+  let port;
+  try {
+    const opts = $('#allPorts').checked ? {} : { filters: [{ usbVendorId: 0x0483, usbProductId: 0x5740 }] };
+    port = await navigator.serial.requestPort(opts);
+  } catch (e) { log('No port selected.'); return; }
+  try {
+    await port.open({ baudRate: 115200, bufferSize: 1 << 16 });
+  } catch (e) { log('Open failed: ' + e.message); toast('Could not open the port (is another app using the tinySA?)'); return; }
+  Dev.port = port; Dev.buf = '';
+  const enc = new TextEncoderStream(); Dev.writeDone = enc.readable.pipeTo(port.writable).catch(() => {}); Dev.writer = enc.writable.getWriter();
+  const dec = new TextDecoderStream(); Dev.readDone = port.readable.pipeTo(dec.writable).catch(() => {}); Dev.reader = dec.readable.getReader();
+  readLoop();
+  setStatus('Connecting…', 'busy'); updateButtons();
+  try {
+    await sleep(150);
+    await cmd('', 2500).catch(() => {});
+    const v = clean(await cmd('version', 3000), 'version');
+    log('Connected: ' + (v || 'tinySA'));
+    setStatus('Connected · ' + (v.split('\n')[0] || 'tinySA').slice(0, 40), 'on');
+    toast('tinySA connected');
+  } catch (e) {
+    log('No response to "version": ' + e.message);
+    setStatus('Port open – no tinySA reply', 'busy');
+    toast('Port opened but the tinySA did not answer. Check it is switched on.');
+  }
+  updateButtons();
+}
+async function readLoop() {
+  try {
+    while (true) {
+      const { value, done } = await Dev.reader.read();
+      if (done) break;
+      Dev.buf += value;
+      if (Dev.waiter) {
+        const i = Dev.buf.indexOf('ch> ');
+        if (i >= 0) { const out = Dev.buf.slice(0, i); Dev.buf = Dev.buf.slice(i + 4); const w = Dev.waiter; Dev.waiter = null; w(out); }
+      } else if (Dev.buf.length > 1e6) Dev.buf = '';
+    }
+  } catch (e) { log('Read stopped: ' + e.message); }
+}
+function rawCmd(c, timeout) {
+  return new Promise((res, rej) => {
+    if (!Dev.writer) return rej(new Error('Not connected'));
+    Dev.buf = '';
+    const t = setTimeout(() => { Dev.waiter = null; rej(new Error('Timeout on "' + c + '"')); }, timeout);
+    Dev.waiter = out => { clearTimeout(t); res(out); };
+    Dev.writer.write(c + '\r').catch(e => { clearTimeout(t); Dev.waiter = null; rej(e); });
+  });
+}
+function cmd(c, timeout = 20000) { const p = Dev.queue.then(() => rawCmd(c, timeout)); Dev.queue = p.catch(() => {}); return p; }
+function clean(out, c) { return out.split(/\r?\n/).map(s => s.trim()).filter(s => s && s !== c).join('\n'); }
+
+async function devDisconnect() {
+  S.running = false;
+  try { await cmd('resume', 1500); } catch (e) {}
+  try { await Dev.reader.cancel(); } catch (e) {}
+  try { await Dev.readDone; } catch (e) {}
+  try { await Dev.writer.close(); } catch (e) {}
+  try { await Dev.writeDone; } catch (e) {}
+  try { await Dev.port.close(); } catch (e) {}
+  Dev.port = null; Dev.reader = null; Dev.writer = null; Dev.waiter = null;
+  setStatus('Not connected', ''); log('Disconnected.'); updateButtons();
+}
+if ('serial' in navigator) navigator.serial.addEventListener('disconnect', e => {
+  if (Dev.port && e.target === Dev.port) { log('tinySA unplugged.'); S.running = false; Dev.port = null; Dev.writer = null; Dev.reader = null; setStatus('Unplugged', ''); updateButtons(); }
+});
+
+/* ---------- demo RF ---------- */
+function buildDemoScene() {
+  const sc = { tv: [], mics: [] };
+  const rnd = mulberry(7);
+  for (let ch = 21; ch <= 69; ch++) if (rnd() < 0.28) sc.tv.push({ lo: 470e6 + (ch - 21) * 8e6, lvl: -55 - rnd() * 20 });
+  for (let k = 0; k < 40; k++) sc.mics.push({ f: 470e6 + Math.round(rnd() * 320e6 / 25e3) * 25e3, lvl: -35 - rnd() * 40, duty: 0.4 + rnd() * 0.6 });
+  return sc;
+}
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function demoChunk(a, b, out) {
+  if (!S.demoScene) S.demoScene = buildDemoScene();
+  const sc = S.demoScene, onNow = sc.mics.map(m => Math.random() < m.duty);
+  for (let i = a; i <= b; i++) {
+    const f = fq(i); let v = -108 + Math.random() * 5;
+    for (const t of sc.tv) if (f > t.lo + 0.2e6 && f < t.lo + 7.8e6) v = Math.max(v, t.lvl + Math.random() * 2.5 - ((f < t.lo + 0.5e6 || f > t.lo + 7.5e6) ? 8 : 0));
+    sc.mics.forEach((m, k) => { if (!onNow[k]) return; const d = (f - m.f) / 40e3; if (Math.abs(d) < 6) v = Math.max(v, m.lvl - 3 * d * d + Math.random()); });
+    out[i] = v;
+  }
+}
+
+/* ---------- scanning ---------- */
+function makeChunks() {
+  const cp = Math.max(50, Math.min(30000, parseInt($('#chunkPts').value) || 450));
+  const ch = []; let a = 0;
+  while (a < S.n) { let b = Math.min(a + cp - 1, S.n - 1); if (b - a < 1) a = Math.max(0, b - 1); ch.push([a, b]); a = b + 1; }
+  return ch;
+}
+function parseScan(out, a, b, sweep) {
+  let got = 0;
+  for (const line of out.split(/\r?\n/)) {
+    const m = line.trim().split(/\s+/);
+    if (m.length < 2 || !/^\d+$/.test(m[0])) continue;
+    const f = +m[0], v = parseFloat(m[1]);
+    if (!isFinite(v)) continue;
+    const idx = Math.round((f - S.start) / S.step);
+    if (idx < a || idx > b) continue;
+    sweep[idx] = v; got++;
+  }
+  // fill any holes from rounding
+  let last = NaN;
+  for (let i = a; i <= b; i++) { if (isFinite(sweep[i])) last = sweep[i]; else if (isFinite(last)) sweep[i] = last; }
+  for (let i = b, nx = NaN; i >= a; i--) { if (isFinite(sweep[i])) nx = sweep[i]; else if (isFinite(nx)) sweep[i] = nx; }
+  return got;
+}
+async function startScan() {
+  const g = readGridInputs(); if (!g) return;
+  if (g.start !== S.start || g.stop !== S.stop || g.step !== S.step || !S.live) {
+    S.start = g.start; S.stop = g.stop; S.step = g.step; allocGrid();
+  }
+  S.running = true; S.scanStartedAt = S.scanStartedAt || new Date();
+  updateButtons(); setStatus(S.demo ? 'Demo · scanning' : 'Scanning…', 'busy');
+  if (!S.demo) {
+    for (const c of ['rbw ' + $('#rbw').value, 'attenuate ' + $('#att').value, 'lna ' + ($('#lna').checked ? 'on' : 'off')]) {
+      try { const r = clean(await cmd(c, 3000), c); if (r) log(c + ' → ' + r); } catch (e) { log(c + ' failed: ' + e.message); }
+    }
+  }
+  const chunks = makeChunks();
+  log(`Scan ${(S.start / 1e6).toFixed(3)}–${(S.stop / 1e6).toFixed(3)} MHz, ${S.n} pts, ${chunks.length} chunk(s)`);
+  const limit = parseInt($('#sweepLimit').value) || 0;
+  try {
+    while (S.running) {
+      const t0 = performance.now();
+      const sweep = new Float32Array(S.n).fill(NaN);
+      let complete = true;
+      for (let k = 0; k < chunks.length; k++) {
+        if (!S.running) { complete = false; break; }
+        const [a, b] = chunks[k];
+        if (S.demo) { await sleep(60); demoChunk(a, b, sweep); }
+        else {
+          const c = `scan ${Math.round(fq(a))} ${Math.round(fq(b))} ${b - a + 1} 3`;
+          const out = await cmd(c, 60000);
+          if (!parseScan(out, a, b, sweep)) log('No data from: ' + c + ' → ' + out.slice(0, 200));
+        }
+        for (let i = a; i <= b; i++) {
+          const v = sweep[i]; if (!isFinite(v)) continue;
+          S.live[i] = v; if (!(S.max[i] >= v)) S.max[i] = v;
+        }
+        $('#prog').style.width = ((k + 1) / chunks.length * 100) + '%';
+        dirty();
+      }
+      if (!complete) break;
+      S.sweeps++;
+      for (let i = 0; i < S.n; i++) { const v = sweep[i]; if (!isFinite(v)) continue; S.avg[i] = isFinite(S.avg[i]) ? S.avg[i] + (v - S.avg[i]) / S.sweeps : v; }
+      S.history.push(sweep); if (S.history.length > MAX_HISTORY) S.history.shift();
+      $('#sweepCount').value = S.sweeps;
+      setStatus(`${S.demo ? 'Demo · ' : ''}Sweep ${S.sweeps} · ${((performance.now() - t0) / 1000).toFixed(1)} s`, 'busy');
+      analyse(); dirty(true);
+      if (limit && S.sweeps >= limit) { S.running = false; toast(`Done – ${limit} sweeps`); }
+    }
+  } catch (e) { log('Scan error: ' + e.message); toast('Scan stopped: ' + e.message); }
+  S.running = false; $('#prog').style.width = '0';
+  if (!S.demo && Dev.port) { try { await cmd('resume', 2000); } catch (e) {} setStatus('Connected · idle', 'on'); }
+  else if (S.demo) setStatus('Demo mode · idle', 'demo');
+  analyse(); dirty(true); updateButtons();
+}
+
+/* ---------- analysis ---------- */
+function trace(name) { return name === 'live' ? S.live : name === 'avg' ? S.avg : S.max; }
+function analyse() {
+  if (!S.live) return;
+  const tr = trace($('#anTrace').value), thr = +$('#thr').value;
+  const minW = (+$('#minGap').value || 0) * 1e3, guard = (+$('#guard').value || 0) * 1e3;
+  // open gaps
+  const gaps = []; let a = -1;
+  for (let i = 0; i <= S.n; i++) {
+    const below = i < S.n && isFinite(tr[i]) && tr[i] < thr;
+    if (below && a < 0) a = i;
+    if (!below && a >= 0) {
+      const lo = fq(a) + (a > 0 ? guard : 0), hi = fq(i - 1) - (i < S.n ? guard : 0);
+      if (hi - lo >= minW) {
+        let mx = -999; for (let j = a; j < i; j++) mx = Math.max(mx, tr[j]);
+        gaps.push({ lo, hi, w: hi - lo, c: Math.round((lo + hi) / 2 / 25e3) * 25e3, mx });
+      }
+      a = -1;
+    }
+  }
+  S.gaps = gaps;
+  // peaks
+  const w = Math.max(1, Math.round((+$('#peakSep').value || 200) * 1e3 / S.step)), peaks = [];
+  for (let i = 0; i < S.n; i++) {
+    const v = tr[i]; if (!(v >= thr)) continue;
+    let isMax = true;
+    for (let j = Math.max(0, i - w); j <= Math.min(S.n - 1, i + w); j++) if (tr[j] > v || (tr[j] === v && j < i)) { isMax = false; break; }
+    if (isMax) peaks.push({ f: fq(i), v });
+  }
+  S.peaks = peaks.length > 400 ? peaks.sort((x, y) => y.v - x.v).slice(0, 400).sort((x, y) => x.f - y.f) : peaks;
+  renderTables();
+}
+function tvCh(f) {
+  const r = $('#tvRegion').value;
+  if (r === 'eu' && f >= 470e6 && f < 862e6) return 21 + Math.floor((f - 470e6) / 8e6);
+  if (r === 'us' && f >= 470e6 && f < 608e6) return 14 + Math.floor((f - 470e6) / 6e6);
+  return '';
+}
+function renderTables() {
+  const thr = +$('#thr').value;
+  $('#gapBody').innerHTML = S.gaps.map((g, k) => `<tr data-lo="${g.lo}" data-hi="${g.hi}"><td>${k + 1}</td><td>${(g.lo / 1e6).toFixed(3)}</td><td>${(g.hi / 1e6).toFixed(3)}</td><td>${Math.round(g.w / 1e3).toLocaleString()}</td><td>${(g.c / 1e6).toFixed(3)}</td><td>${g.mx.toFixed(1)}</td><td>${tvCh(g.c)}</td></tr>`).join('')
+    || `<tr><td colspan="7" style="text-align:left;color:var(--muted)">${S.sweeps ? 'No open space below the threshold with the chosen width.' : 'Run a scan to find open frequencies.'}</td></tr>`;
+  $('#peakBody').innerHTML = S.peaks.map((p, k) => `<tr data-lo="${p.f - 1e6}" data-hi="${p.f + 1e6}"><td>${k + 1}</td><td>${(p.f / 1e6).toFixed(3)}</td><td>${p.v.toFixed(1)}</td><td>${(p.v - thr).toFixed(1)}</td><td>${tvCh(p.f)}</td></tr>`).join('')
+    || `<tr><td colspan="5" style="text-align:left;color:var(--muted)">No signals above threshold yet.</td></tr>`;
+  const open = S.gaps.reduce((s, g) => s + g.w, 0);
+  $('#sum').textContent = S.n ? `${S.gaps.length} open gaps · ${(open / 1e6).toFixed(1)} MHz open · ${S.peaks.length} carriers · ${S.sweeps} sweeps` : '';
+}
+$$('tbody').forEach(tb => tb.addEventListener('click', e => {
+  const tr = e.target.closest('tr'); if (!tr || !tr.dataset.lo) return;
+  const lo = +tr.dataset.lo, hi = +tr.dataset.hi, pad = Math.max((hi - lo) * 0.6, 1e6);
+  zoomTo(lo - pad, hi + pad);
+}));
+
+/* ---------- drawing ---------- */
+const spec = $('#spec'), wf = $('#wf');
+const M = { L: 52, R: 12, T: 20, B: 24 };
+let needDraw = false, needWf = false, drag = null, hover = null;
+function dirty(wfToo) { needDraw = true; if (wfToo) needWf = true; }
+function frame() { if (needDraw) { needDraw = false; drawSpec(); } if (needWf) { needWf = false; drawWf(); } requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+new ResizeObserver(() => dirty(true)).observe(spec);
+
+function niceStep(rangeMHz, ticks) {
+  const raw = rangeMHz / ticks, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const m of [1, 2, 5, 10]) if (m * p >= raw) return m * p;
+  return 10 * p;
+}
+function colMax(tr, i0, i1) { let m = -Infinity; for (let i = i0; i <= i1; i++) if (tr[i] > m) m = tr[i]; return m; }
+
+function drawSpec() {
+  const d = devicePixelRatio || 1, r = spec.getBoundingClientRect();
+  spec.width = Math.max(1, Math.round(r.width * d)); spec.height = Math.max(1, Math.round(r.height * d));
+  const c = spec.getContext('2d'); c.setTransform(d, 0, 0, d, 0, 0);
+  const W = r.width, H = r.height, pw = W - M.L - M.R, ph = H - M.T - M.B;
+  const top = +$('#dbTop').value, bot = +$('#dbBot').value;
+  c.fillStyle = '#0a0e13'; c.fillRect(0, 0, W, H);
+  if (!S.n || pw < 10 || ph < 10) return;
+  const span = Math.max(1, S.viewB - S.viewA);
+  const xi = i => M.L + (i - S.viewA) / span * pw;
+  const xf = f => xi((f - S.start) / S.step);
+  const yv = v => M.T + (top - v) / (top - bot) * ph;
+  const fA = fq(S.viewA), fB = fq(S.viewB);
+
+  c.save(); c.beginPath(); c.rect(M.L, M.T, pw, ph); c.clip();
+  // TV channels
+  const reg = $('#tvRegion').value;
+  if (reg !== 'none') {
+    const bw = reg === 'eu' ? 8e6 : 6e6, first = reg === 'eu' ? 21 : 14, end = reg === 'eu' ? 862e6 : 608e6;
+    c.font = '10px sans-serif'; c.textAlign = 'center';
+    for (let lo = 470e6, ch = first; lo < end; lo += bw, ch++) {
+      if (lo + bw < fA || lo > fB) continue;
+      const x0 = xf(lo), x1 = xf(lo + bw);
+      if ((ch & 1) === 0) { c.fillStyle = 'rgba(255,255,255,.025)'; c.fillRect(x0, M.T, x1 - x0, ph); }
+      c.strokeStyle = 'rgba(255,255,255,.08)'; c.beginPath(); c.moveTo(x0 + .5, M.T); c.lineTo(x0 + .5, M.T + ph); c.stroke();
+      if (x1 - x0 > 22) { c.fillStyle = 'rgba(200,215,230,.45)'; c.fillText(ch, (x0 + x1) / 2, M.T + 11); }
+    }
+  }
+  // gaps
+  if (S.show.gaps) for (const g of S.gaps) {
+    if (g.hi < fA || g.lo > fB) continue;
+    const x0 = xf(g.lo), x1 = xf(g.hi);
+    c.fillStyle = getCss('--gap'); c.fillRect(x0, M.T, Math.max(1, x1 - x0), ph);
+    c.fillStyle = getCss('--gapEdge'); c.fillRect(x0, M.T + ph - 4, Math.max(1, x1 - x0), 4);
+  }
+  // grid
+  c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 1;
+  for (let v = Math.ceil(bot / 10) * 10; v <= top; v += 10) { const y = Math.round(yv(v)) + .5; c.beginPath(); c.moveTo(M.L, y); c.lineTo(M.L + pw, y); c.stroke(); }
+  const st = niceStep((fB - fA) / 1e6, Math.max(3, pw / 90)) * 1e6;
+  for (let f = Math.ceil(fA / st) * st; f <= fB; f += st) { const x = Math.round(xf(f)) + .5; c.beginPath(); c.moveTo(x, M.T); c.lineTo(x, M.T + ph); c.stroke(); }
+  // traces
+  const drawTr = (tr, col, fill) => {
+    c.beginPath(); let started = false, lastX = 0;
+    const bins = S.viewB - S.viewA + 1;
+    if (bins <= pw * 1.5) {
+      for (let i = S.viewA; i <= S.viewB; i++) { const v = tr[i]; if (!isFinite(v)) { started = false; continue; } const x = xi(i), y = yv(v); if (!started) { c.moveTo(x, y); started = true; } else c.lineTo(x, y); lastX = x; }
+    } else {
+      for (let px = 0; px < pw; px++) {
+        const i0 = S.viewA + Math.floor(px / pw * bins), i1 = Math.min(S.viewB, S.viewA + Math.floor((px + 1) / pw * bins) - 1);
+        const v = colMax(tr, i0, Math.max(i0, i1)); if (!isFinite(v)) { started = false; continue; }
+        const x = M.L + px + .5, y = yv(v); if (!started) { c.moveTo(x, y); started = true; } else c.lineTo(x, y); lastX = x;
+      }
+    }
+    c.strokeStyle = col; c.lineWidth = 1.2; c.stroke();
+    if (fill) { c.lineTo(lastX, M.T + ph); c.lineTo(M.L, M.T + ph); c.closePath(); c.fillStyle = fill; c.fill(); }
+  };
+  if (S.show.max) drawTr(S.max, getCss('--max'), 'rgba(255,92,92,.07)');
+  if (S.show.avg) drawTr(S.avg, getCss('--avg'));
+  if (S.show.live) drawTr(S.live, getCss('--live'));
+  // threshold
+  const thr = +$('#thr').value, yt = yv(thr);
+  c.setLineDash([6, 4]); c.strokeStyle = getCss('--thr'); c.beginPath(); c.moveTo(M.L, yt); c.lineTo(M.L + pw, yt); c.stroke(); c.setLineDash([]);
+  // peaks
+  if (S.show.peaks) {
+    c.fillStyle = '#fff'; c.font = '10px sans-serif'; c.textAlign = 'center'; let lastLbl = -1e9;
+    for (const p of S.peaks) {
+      if (p.f < fA || p.f > fB) continue;
+      const x = xf(p.f), y = yv(p.v);
+      c.beginPath(); c.moveTo(x, y - 3); c.lineTo(x - 4, y - 10); c.lineTo(x + 4, y - 10); c.closePath(); c.fill();
+      if (x - lastLbl > 52) { c.fillText((p.f / 1e6).toFixed(3), x, Math.max(M.T + 22, y - 13)); lastLbl = x; }
+    }
+  }
+  // hover line
+  if (hover != null) { c.strokeStyle = 'rgba(63,181,255,.6)'; c.beginPath(); c.moveTo(hover + .5, M.T); c.lineTo(hover + .5, M.T + ph); c.stroke(); }
+  // drag selection
+  if (drag && Math.abs(drag.x1 - drag.x0) > 3) { c.fillStyle = 'rgba(63,181,255,.15)'; c.fillRect(Math.min(drag.x0, drag.x1), M.T, Math.abs(drag.x1 - drag.x0), ph); }
+  c.restore();
+  // axes labels
+  c.fillStyle = '#8b98a5'; c.font = '11px sans-serif'; c.textAlign = 'right'; c.textBaseline = 'middle';
+  for (let v = Math.ceil(bot / 10) * 10; v <= top; v += 10) c.fillText(v, M.L - 6, yv(v));
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  const dec = st >= 1e6 ? 0 : st >= 1e5 ? 1 : 2;
+  for (let f = Math.ceil(fA / st) * st; f <= fB; f += st) c.fillText((f / 1e6).toFixed(dec), xf(f), M.T + ph + 6);
+  c.save(); c.translate(12, M.T + ph / 2); c.rotate(-Math.PI / 2); c.textBaseline = 'middle'; c.fillText('dBm', 0, 0); c.restore();
+  c.strokeStyle = '#2a333d'; c.strokeRect(M.L + .5, M.T + .5, pw, ph);
+  c.textAlign = 'left'; c.textBaseline = 'top'; c.fillStyle = '#8b98a5';
+  c.fillText(`${(fA / 1e6).toFixed(3)} – ${(fB / 1e6).toFixed(3)} MHz · step ${S.step / 1e3} kHz`, M.L + 4, 3);
+}
+const cssCache = {};
+function getCss(v) { return cssCache[v] || (cssCache[v] = getComputedStyle(document.documentElement).getPropertyValue(v).trim()); }
+
+const LUT = (() => {
+  const stops = [[0, 0, 0, 0], [.25, 10, 20, 120], [.5, 0, 170, 220], [.7, 120, 230, 80], [.85, 255, 210, 0], [1, 255, 40, 30]], out = [];
+  for (let k = 0; k < 256; k++) { const t = k / 255; let j = 0; while (j < stops.length - 2 && t > stops[j + 1][0]) j++; const a = stops[j], b = stops[j + 1], u = (t - a[0]) / (b[0] - a[0]); out.push([a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u, a[3] + (b[3] - a[3]) * u].map(Math.round)); }
+  return out;
+})();
+function drawWf() {
+  const r = wf.getBoundingClientRect(), W = Math.max(1, Math.round(r.width)), H = Math.max(1, Math.round(r.height));
+  wf.width = W; wf.height = H;
+  const c = wf.getContext('2d'); c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#8b98a5'; c.font = '10px sans-serif'; c.save(); c.translate(12, H / 2); c.rotate(-Math.PI / 2); c.textAlign = 'center'; c.fillText('waterfall', 0, 0); c.restore();
+  const pw = W - M.L - M.R; if (!S.history.length || pw < 4) return;
+  const top = +$('#dbTop').value, bot = +$('#dbBot').value, rows = Math.min(S.history.length, H);
+  const rowH = Math.max(1, Math.floor(H / Math.max(rows, 1)) > 3 ? 3 : 1);
+  const img = c.createImageData(pw, H), bins = S.viewB - S.viewA + 1;
+  for (let rI = 0; rI < Math.min(S.history.length, Math.ceil(H / rowH)); rI++) {
+    const sw = S.history[S.history.length - 1 - rI];
+    for (let px = 0; px < pw; px++) {
+      const i0 = S.viewA + Math.floor(px / pw * bins), i1 = Math.max(i0, Math.min(S.viewB, S.viewA + Math.floor((px + 1) / pw * bins) - 1));
+      const v = colMax(sw, i0, i1);
+      const k = isFinite(v) ? Math.max(0, Math.min(255, Math.round((v - bot) / (top - bot) * 255))) : 0, col = LUT[k];
+      for (let y = rI * rowH; y < Math.min(H, (rI + 1) * rowH); y++) { const o = (y * pw + px) * 4; img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255; }
+    }
+  }
+  c.putImageData(img, M.L, 0);
+}
+
+/* ---------- mouse ---------- */
+function idxAt(x) { const r = spec.getBoundingClientRect(), pw = r.width - M.L - M.R; return S.viewA + (x - M.L) / pw * (S.viewB - S.viewA); }
+function zoomTo(fLo, fHi) {
+  let a = Math.floor((fLo - S.start) / S.step), b = Math.ceil((fHi - S.start) / S.step);
+  a = Math.max(0, a); b = Math.min(S.n - 1, b); if (b - a < 8) { const m = (a + b) / 2; a = Math.max(0, Math.floor(m - 4)); b = Math.min(S.n - 1, Math.ceil(m + 4)); }
+  S.viewA = a; S.viewB = b; dirty(true);
+}
+spec.addEventListener('mousedown', e => { const x = e.offsetX; if (x > M.L) drag = { x0: x, x1: x }; });
+window.addEventListener('mouseup', () => {
+  if (drag && Math.abs(drag.x1 - drag.x0) > 5) { const a = idxAt(Math.min(drag.x0, drag.x1)), b = idxAt(Math.max(drag.x0, drag.x1)); zoomTo(fq(a), fq(b)); }
+  drag = null; dirty();
+});
+spec.addEventListener('mousemove', e => {
+  if (!S.n) return; const x = e.offsetX; if (drag) drag.x1 = x;
+  const i = Math.round(idxAt(x));
+  if (x < M.L || i < S.viewA || i > S.viewB) { hover = null; dirty(); return; }
+  hover = x;
+  const f = (v) => isFinite(v) ? v.toFixed(1) : '—';
+  const ch = tvCh(fq(i));
+  $('#readout').innerHTML = `<b style="color:var(--text)">${(fq(i) / 1e6).toFixed(3)} MHz</b>${ch ? ' · TV ' + ch : ''} · <span style="color:var(--live)">live ${f(S.live[i])}</span> · <span style="color:var(--max)">max ${f(S.max[i])}</span> · <span style="color:var(--avg)">avg ${f(S.avg[i])}</span> dBm`;
+  dirty();
+});
+spec.addEventListener('mouseleave', () => { hover = null; dirty(); });
+spec.addEventListener('dblclick', () => { S.viewA = 0; S.viewB = S.n - 1; dirty(true); });
+spec.addEventListener('wheel', e => {
+  if (!S.n) return; e.preventDefault();
+  const c = idxAt(e.offsetX), k = e.deltaY > 0 ? 1.25 : 0.8;
+  let a = c - (c - S.viewA) * k, b = c + (S.viewB - c) * k;
+  if (b - a < 8) return; a = Math.max(0, Math.floor(a)); b = Math.min(S.n - 1, Math.ceil(b));
+  S.viewA = a; S.viewB = b; dirty(true);
+}, { passive: false });
+
+/* ---------- export ---------- */
+function stamp() { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
+function baseName() { const v = $('#venue').value.trim().replace(/[^\w\- ]+/g, '').replace(/\s+/g, '_'); return `UniqueAV_Scan_${v ? v + '_' : ''}${stamp()}`; }
+function download(name, text, type = 'text/csv') {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  log('Saved ' + name); toast('Saved ' + name);
+}
+function exportScan(fmt) {
+  if (!S.sweeps && !(S.live && S.live.some(isFinite))) { toast('Nothing to export yet – run a scan first'); return; }
+  const tr = trace($('#exTrace').value);
+  let floor = Infinity; for (const v of tr) if (v < floor) floor = v; if (!isFinite(floor)) floor = -120;
+  const val = i => isFinite(tr[i]) ? tr[i] : floor;
+  const L = [], nl = '\r\n';
+  if (fmt === 'wwb') {
+    for (let i = 0; i < S.n; i++) L.push(`${(fq(i) / 1e6).toFixed(3)},${val(i).toFixed(1)}`);
+    download(baseName() + '_WWB.csv', L.join(nl) + nl);
+  } else if (fmt === 'wsm') {
+    const k = x => +(x / 1e3).toFixed(3);
+    L.push(`Frequency Range [kHz];${k(S.start)};${k(fq(S.n - 1))};${k(S.step)}`);
+    L.push('Frequency;RF level (%);RF level');
+    for (let i = 0; i < S.n; i++) { const v = val(i), pct = Math.max(0, Math.min(100, Math.round(v + 120))); L.push(`${k(fq(i))};${pct};${v.toFixed(1)}`); }
+    download(baseName() + '_WSM.csv', L.join(nl) + nl);
+  } else if (fmt === 'generic') {
+    L.push('Frequency (MHz),Level (dBm)');
+    for (let i = 0; i < S.n; i++) L.push(`${(fq(i) / 1e6).toFixed(4)},${val(i).toFixed(1)}`);
+    download(baseName() + '.csv', L.join(nl) + nl);
+  } else {
+    const unit = $('#cuUnit').value, sep = $('#cuSep').value === '\\t' ? '\t' : $('#cuSep').value;
+    const div = unit === 'MHz' ? 1e6 : unit === 'kHz' ? 1e3 : 1, dp = unit === 'MHz' ? 4 : unit === 'kHz' ? 1 : 0;
+    if ($('#cuHead').value === '1') L.push(`Frequency (${unit})${sep}Level (dBm)`);
+    for (let i = 0; i < S.n; i++) L.push(`${(fq(i) / div).toFixed(dp)}${sep}${val(i).toFixed(1)}`);
+    download(baseName() + (sep === '\t' ? '.txt' : '.csv'), L.join(nl) + nl);
+  }
+}
+$$('[data-ex]').forEach(b => b.addEventListener('click', () => exportScan(b.dataset.ex)));
+$('#btnExGaps').addEventListener('click', () => {
+  if (!S.gaps.length) { toast('No open frequencies found yet'); return; }
+  download(baseName() + '_OpenFreqs.txt', S.gaps.map(g => (g.c / 1e6).toFixed(3)).join('\r\n') + '\r\n', 'text/plain');
+});
+$('#btnExPeaks').addEventListener('click', () => {
+  if (!S.peaks.length) { toast('No carriers above threshold'); return; }
+  download(baseName() + '_Carriers.csv', 'Frequency (MHz),Level (dBm)\r\n' + S.peaks.map(p => `${(p.f / 1e6).toFixed(3)},${p.v.toFixed(1)}`).join('\r\n') + '\r\n');
+});
+
+/* ---------- sessions ---------- */
+const arr = a => Array.from(a, v => isFinite(v) ? Math.round(v * 10) / 10 : null);
+$('#btnSave').addEventListener('click', () => {
+  if (!S.n) return toast('Nothing to save');
+  const o = { app: 'UniqueAV RF Scan', v: 1, savedAt: new Date().toISOString(), venue: $('#venue').value, start: S.start, stop: S.stop, step: S.step, sweeps: S.sweeps, live: arr(S.live), max: arr(S.max), avg: arr(S.avg), history: S.history.slice(-60).map(arr), settings: settingsObj() };
+  download(baseName() + '.rfscan', JSON.stringify(o), 'application/json');
+});
+$('#btnLoad').addEventListener('click', () => $('#fileLoad').click());
+$('#fileLoad').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return; e.target.value = '';
+  try {
+    const o = JSON.parse(await f.text());
+    if (!o.max || !o.step) throw new Error('not a session file');
+    S.start = o.start; S.stop = o.stop; S.step = o.step; allocGrid();
+    const fill = (dst, src) => src && src.forEach((v, i) => { if (i < S.n) dst[i] = v == null ? NaN : v; });
+    fill(S.live, o.live); fill(S.max, o.max); fill(S.avg, o.avg);
+    S.history = (o.history || []).map(h => Float32Array.from(h, v => v == null ? NaN : v));
+    S.sweeps = o.sweeps || 0; $('#sweepCount').value = S.sweeps;
+    if (o.settings) applySettings(o.settings);
+    $('#fStart').value = S.start / 1e6; $('#fStop').value = S.stop / 1e6; $('#fStep').value = String(S.step / 1e3); $('#preset').value = 0;
+    $('#venue').value = o.venue || '';
+    analyse(); dirty(true); updateGridInfo(); log('Opened session ' + f.name); toast('Session opened');
+  } catch (err) { toast('Could not open: ' + err.message); }
+});
+
+/* ---------- settings persistence ---------- */
+const SETTING_IDS = ['fStart', 'fStop', 'fStep', 'chunkPts', 'rbw', 'att', 'lna', 'allPorts', 'sweepLimit', 'dbTop', 'dbBot', 'tvRegion', 'anTrace', 'thr', 'minGap', 'guard', 'peakSep', 'exTrace', 'venue', 'cuUnit', 'cuSep', 'cuHead', 'preset'];
+function settingsObj() { const o = {}; SETTING_IDS.forEach(id => { const el = $('#' + id); o[id] = el.type === 'checkbox' ? el.checked : el.value; }); return o; }
+function applySettings(o) { SETTING_IDS.forEach(id => { if (!(id in o)) return; const el = $('#' + id); if (el.type === 'checkbox') el.checked = !!o[id]; else el.value = o[id]; }); }
+function saveSettings() { try { localStorage.setItem('uav-rfscan', JSON.stringify(settingsObj())); } catch (e) {} }
+try { const s = localStorage.getItem('uav-rfscan'); if (s) applySettings(JSON.parse(s)); } catch (e) {}
+
+/* ---------- wiring ---------- */
+$('#btnConnect').addEventListener('click', () => Dev.port ? devDisconnect() : devConnect());
+$('#btnDemo').addEventListener('click', () => {
+  S.demo = !S.demo; S.demoScene = null;
+  setStatus(S.demo ? 'Demo mode · idle' : 'Not connected', S.demo ? 'demo' : '');
+  log(S.demo ? 'Demo mode on (simulated RF).' : 'Demo mode off.'); updateButtons();
+});
+$('#btnScan').addEventListener('click', () => { if (S.running) { S.running = false; updateButtons(); } else startScan(); });
+document.addEventListener('keydown', e => { if (e.code === 'Space' && !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(document.activeElement.tagName)) { e.preventDefault(); if (!$('#btnScan').disabled) $('#btnScan').click(); } });
+$('#preset').addEventListener('change', () => { const p = PRESETS[+$('#preset').value]; if (p[1]) { $('#fStart').value = p[1]; $('#fStop').value = p[2]; } updateGridInfo(); saveSettings(); });
+['fStart', 'fStop'].forEach(id => $('#' + id).addEventListener('input', () => { $('#preset').value = 0; }));
+['fStart', 'fStop', 'fStep', 'chunkPts'].forEach(id => $('#' + id).addEventListener('change', updateGridInfo));
+['thr', 'minGap', 'guard', 'peakSep', 'anTrace', 'tvRegion'].forEach(id => $('#' + id).addEventListener('change', () => { analyse(); dirty(true); }));
+['dbTop', 'dbBot'].forEach(id => $('#' + id).addEventListener('change', () => dirty(true)));
+SETTING_IDS.forEach(id => $('#' + id).addEventListener('change', saveSettings));
+$('#btnClearMax').addEventListener('click', () => { if (S.max) { S.max.set(S.live); analyse(); dirty(); } });
+$('#btnClearAll').addEventListener('click', () => { if (S.running) return toast('Stop the scan first'); const g = readGridInputs(); if (!g) return; S.start = g.start; S.stop = g.stop; S.step = g.step; allocGrid(); });
+$$('.legend span').forEach(s => s.addEventListener('click', () => { const k = s.dataset.tr; S.show[k] = !S.show[k]; s.classList.toggle('off', !S.show[k]); dirty(); }));
+$$('.tab').forEach(t => t.addEventListener('click', () => { $$('.tab').forEach(x => x.classList.toggle('on', x === t)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === t.dataset.pane)); }));
+
+/* ---------- init ---------- */
+(() => {
+  const g = readGridInputs() || { start: 470e6, stop: 694e6, step: 25e3 };
+  S.start = g.start; S.stop = g.stop; S.step = g.step; allocGrid(); updateGridInfo(); updateButtons();
+  if (!('serial' in navigator)) { setStatus('Open in Chrome or Edge for USB', ''); log('Web Serial not available in this browser – use Chrome or Edge. Demo mode still works.'); }
+  else log('Ready. Connect the tinySA Ultra by USB, or try Demo mode.');
+})();
+
+/* ---------- desktop app (Electron) ---------- */
+if (window.desktop) {
+  document.querySelectorAll('.webonly').forEach(e => e.remove());
+  window.desktop.info().then(i => { $('#ver').textContent = 'v' + i.version; });
+  const box = $('#upd'), txt = $('#updText'), btn = $('#updBtn');
+  btn.addEventListener('click', () => window.desktop.installUpdate());
+  window.desktop.onUpdate(u => {
+    if (u.state === 'downloading') { box.classList.add('show'); btn.style.display = 'none'; txt.textContent = `Downloading update… ${u.percent}%`; }
+    else if (u.state === 'available') { box.classList.add('show'); btn.style.display = 'none'; txt.textContent = `Update ${u.version} found – downloading…`; }
+    else if (u.state === 'ready') { box.classList.add('show'); btn.style.display = ''; txt.textContent = `Version ${u.version} is ready`; log('Update ' + u.version + ' downloaded – restart to install.'); }
+    else if (u.state === 'error') { box.classList.remove('show'); log('Update check failed: ' + u.message); }
+    else box.classList.remove('show');
+  });
+}
+</script>
+</body>
+</html>
