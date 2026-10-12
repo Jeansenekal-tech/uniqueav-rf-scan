@@ -7,7 +7,7 @@ name: Build & release
 on:
   push:
     branches: [main]
-    paths: ['package.json']
+    paths: ['package.json', '.github/workflows/release.yml']
   workflow_dispatch:
 
 permissions:
@@ -57,7 +57,13 @@ jobs:
 
       - name: Build & upload (macOS)
         if: runner.os == 'macOS'
-        run: npx electron-builder --mac --publish always
+        shell: bash
+        run: |
+          set -o pipefail
+          npx electron-builder --mac --publish always 2>&1 | tee build.log || {
+            echo "::error title=Mac build failed::$(tail -n 40 build.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+            exit 1
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Optional – add these repo secrets to sign + notarise the Mac app.
@@ -71,7 +77,13 @@ jobs:
 
       - name: Build & upload (Windows)
         if: runner.os == 'Windows'
-        run: npx electron-builder --win --publish always
+        shell: bash
+        run: |
+          set -o pipefail
+          npx electron-builder --win --publish always 2>&1 | tee build.log || {
+            echo "::error title=Windows build failed::$(tail -n 40 build.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+            exit 1
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
