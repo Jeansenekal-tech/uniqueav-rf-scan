@@ -25,15 +25,40 @@
     "appId": "za.co.uniqueav.rfscan",
     "productName": "Unique AV RF Scan",
     "copyright": "Copyright © Unique AV",
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["main.js", "preload.js", "app/**/*", "package.json"],
-    "publish": [{ "provider": "github", "owner": "Jeansenekal-tech", "repo": "uniqueav-rf-scan", "releaseType": "draft" }],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Jeansenekal-tech",
+        "repo": "uniqueav-rf-scan",
+        "releaseType": "draft"
+      }
+    ],
     "mac": {
       "category": "public.app-category.utilities",
       "icon": "build/icon.png",
       "target": [
-        { "target": "dmg", "arch": ["universal"] },
-        { "target": "zip", "arch": ["universal"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
       ],
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -46,7 +71,14 @@
     },
     "win": {
       "icon": "build/icon.png",
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "artifactName": "UniqueAV-RF-Scan-Setup-${version}.exe"
     },
     "nsis": {
@@ -56,6 +88,15 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Unique AV RF Scan"
     },
-    "linux": { "target": ["AppImage"], "icon": "build/icon.png", "category": "Utility" }
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility"
+    },
+    "zip": {
+      "artifactName": "UniqueAV-RF-Scan-${version}-mac.zip"
+    }
   }
 }
