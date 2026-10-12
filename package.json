@@ -1,7 +1,7 @@
 {
   "name": "uniqueav-rf-scan",
   "productName": "Unique AV RF Scan",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "RF scanner for the tinySA Ultra with exports for Shure WWB, Sennheiser WSM and other wireless mic software",
   "author": "Unique AV <levisenekal@gmail.com>",
   "license": "UNLICENSED",
