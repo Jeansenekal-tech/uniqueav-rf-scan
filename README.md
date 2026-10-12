@@ -20,18 +20,16 @@ Exports scans for Shure Wireless Workbench, Sennheiser WSM, and generic CSV for 
 
 ## Releasing a version (builds the .dmg and .exe)
 
-```bash
-# bump "version" in package.json, e.g. 1.0.1, then:
-git commit -am "v1.0.1"
-git tag v1.0.1
-git push && git push --tags
-```
+1. Change `"version"` in `package.json` (for example `1.0.0` to `1.0.1`).
+2. Commit and push to `main`. Editing `package.json` on the GitHub website and committing works too.
 
-GitHub Actions builds the Mac and Windows installers (about 10 minutes). It then publishes them to **Releases**:
+GitHub Actions builds the Mac and Windows installers (about 10–15 minutes). It then publishes them to **Releases** as `v1.0.1`:
 
 - `UniqueAV-RF-Scan-1.0.1.dmg` – Mac universal build (Apple Silicon + Intel)
 - `UniqueAV-RF-Scan-Setup-1.0.1.exe` – Windows installer
 - `latest.yml`, `latest-mac.yml`, `.zip` and `.blockmap` files – used by auto-update; leave them in the release
+
+You can also press **Run workflow** on the Actions tab. If that version is already released, the workflow skips the build.
 
 ## Auto-updates
 

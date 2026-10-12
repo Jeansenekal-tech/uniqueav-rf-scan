@@ -27,7 +27,7 @@
     "copyright": "Copyright © Unique AV",
     "directories": { "output": "dist", "buildResources": "build" },
     "files": ["main.js", "preload.js", "app/**/*", "package.json"],
-    "publish": [{ "provider": "github", "owner": "Jeansenekal-tech", "repo": "uniqueav-rf-scan", "releaseType": "release" }],
+    "publish": [{ "provider": "github", "owner": "Jeansenekal-tech", "repo": "uniqueav-rf-scan", "releaseType": "draft" }],
     "mac": {
       "category": "public.app-category.utilities",
       "icon": "build/icon.png",
