@@ -2,8 +2,10 @@ name: Build & release
 
 # Builds the Mac .dmg and Windows .exe and publishes them to GitHub Releases.
 # Runs automatically when package.json changes on main (i.e. you bumped the
-# version) – or press "Run workflow" on the Actions tab. If a release for the
-# current version already exists, nothing is rebuilt.
+# version) – or press "Run workflow" on the Actions tab.
+# New version  -> builds and publishes a GitHub Release (installed apps auto-update).
+# Same version -> a push does nothing; "Run workflow" still compiles and attaches the
+#                 .dmg/.exe to the run page as downloads, without touching the release.
 on:
   push:
     branches: [main]
@@ -22,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
-      build: ${{ steps.v.outputs.build }}
+      release: ${{ steps.v.outputs.release }}
     steps:
       - uses: actions/checkout@v4
       - id: v
@@ -32,17 +34,19 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if gh release view "v$VERSION" --json isDraft -q .isDraft 2>/dev/null | grep -q false; then
-            echo "v$VERSION is already released – skipping build."
-            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "v$VERSION is already released – no new release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
           else
             gh release view "v$VERSION" >/dev/null 2>&1 || \
               gh release create "v$VERSION" --draft --target "$GITHUB_SHA" --title "Unique AV RF Scan $VERSION" --notes "Unique AV RF Scan $VERSION"
-            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "release=true" >> "$GITHUB_OUTPUT"
           fi
 
   build:
     needs: prepare
-    if: needs.prepare.outputs.build == 'true'
+    if: needs.prepare.outputs.release == 'true' || github.event_name == 'workflow_dispatch'
+    env:
+      PUBLISH: ${{ needs.prepare.outputs.release == 'true' && 'always' || 'never' }}
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +68,7 @@ jobs:
           for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
             [ -z "${!v}" ] && unset "$v"
           done
-          npx electron-builder --mac --publish always 2>&1 | tee build.log || {
+          npx electron-builder --mac --publish $PUBLISH 2>&1 | tee build.log || {
             echo "::error title=Mac build failed::$(tail -n 40 build.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
             exit 1
           }
@@ -84,15 +88,26 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx electron-builder --win --publish always 2>&1 | tee build.log || {
+          npx electron-builder --win --publish $PUBLISH 2>&1 | tee build.log || {
             echo "::error title=Windows build failed::$(tail -n 40 build.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
             exit 1
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Attach installers to this run
+        if: env.PUBLISH == 'never'
+        uses: actions/upload-artifact@v4
+        with:
+          name: UniqueAV-RF-Scan-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+          if-no-files-found: error
+
   publish:
     needs: [prepare, build]
+    if: needs.prepare.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Publish the release
