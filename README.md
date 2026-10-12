@@ -16,8 +16,7 @@ Exports scans for Shure Wireless Workbench, Sennheiser WSM, and generic CSV for 
 ## One-time setup
 
 1. Create a GitHub repository called `uniqueav-rf-scan`. It can be private, but see the note on private repos under Auto-updates below.
-2. In `package.json`, change `"owner": "YOUR_GITHUB_USERNAME"` to your GitHub username.
-3. Push this folder to the repository.
+2. Push this folder to the repository.
 
 ## Releasing a version (builds the .dmg and .exe)
 
