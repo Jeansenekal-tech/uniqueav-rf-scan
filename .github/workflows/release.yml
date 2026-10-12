@@ -60,6 +60,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          # Drop signing/notarising settings that aren't configured (blank secrets break electron-builder)
+          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            [ -z "${!v}" ] && unset "$v"
+          done
           npx electron-builder --mac --publish always 2>&1 | tee build.log || {
             echo "::error title=Mac build failed::$(tail -n 40 build.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
             exit 1
