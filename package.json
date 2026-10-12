@@ -63,7 +63,8 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "artifactName": "UniqueAV-RF-Scan-${version}-mac.${ext}"
     },
     "dmg": {
       "title": "Unique AV RF Scan ${version}",
@@ -94,9 +95,6 @@
       ],
       "icon": "build/icon.png",
       "category": "Utility"
-    },
-    "zip": {
-      "artifactName": "UniqueAV-RF-Scan-${version}-mac.zip"
     }
   }
 }
